@@ -1,4 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject } from '@angular/core';
+import { MedicoService } from '../../../_service/medico.service';
+import { Medico } from '../../../_model/medico';
+import {MatDialogRef, MAT_DIALOG_DATA} from '@angular/material';
+import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-medico-dialogo',
@@ -7,9 +11,45 @@ import { Component, OnInit } from '@angular/core';
 })
 export class MedicoDialogoComponent implements OnInit {
 
-  constructor() { }
+  medico: Medico;
+
+  constructor(
+    private dialogRef: MatDialogRef<MedicoDialogoComponent>,
+    @Inject(MAT_DIALOG_DATA) private data: Medico,
+    private medicoService: MedicoService
+  ) { }
 
   ngOnInit() {
+    this.medico = new Medico();
+    this.medico.idMedico = this.data.idMedico;
+    this.medico.nombres = this.data.nombres;
+    this.medico.apellidos = this.data.apellidos;
+    this.medico.cmp = this.data.cmp;
+    this.medico.fotoUrl = this.data.fotoUrl;
+  }
+
+  operar() {
+    if (this.medico != null && this.medico.idMedico > 0) {
+
+      this.medicoService.modificar(this.medico).pipe(switchMap( ()=> {
+          return this.medicoService.listar();
+      })).subscribe(data => {
+        this.medicoService.medicoCambio.next(data);
+        this.medicoService.mensajeCambio.next('SE MODIFICÓ');
+      });
+    } else {
+      this.medicoService.registrar(this.medico).subscribe(() => {
+        this.medicoService.listar().subscribe(data => {
+          this.medicoService.medicoCambio.next(data);
+          this.medicoService.mensajeCambio.next('SE REGISTRÓ');
+        });
+      });
+    }
+    this.dialogRef.close();
+  }
+
+  cancelar () {
+    this.dialogRef.close();
   }
 
 }

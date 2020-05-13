@@ -1,4 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { switchMap } from 'rxjs/operators';
+import { ActivatedRoute } from '@angular/router';
+import { EspecialidadService } from '../../_service/especialidad.service';
+import { MatPaginator, MatSort, MatTableDataSource, MatSnackBar } from '@angular/material';
+import {forkJoin} from 'rxjs';
+import { Especialidad } from 'src/app/_model/especialidad';
 
 @Component({
   selector: 'app-especialidad',
@@ -7,9 +13,44 @@ import { Component, OnInit } from '@angular/core';
 })
 export class EspecialidadComponent implements OnInit {
 
-  constructor() { }
+  displayedColumns = ['id', 'nombre', 'acciones'];
+  dataSource: MatTableDataSource<Especialidad>;
+  @ViewChild(MatPaginator, {static: true}) paginator: MatPaginator;
+  @ViewChild(MatSort, {static: true}) sort: MatSort;
+
+  constructor(private especialidadService: EspecialidadService, private snackBar: MatSnackBar, public route: ActivatedRoute) { }
 
   ngOnInit() {
+
+    this.especialidadService.EspecialidadCambio.subscribe(data => {
+      this.dataSource = new MatTableDataSource(data);
+      this.dataSource.sort = this.sort;
+      this.dataSource.paginator = this.paginator;
+    });
+
+    this.especialidadService.mensajeCambio.subscribe(data => {
+      this.snackBar.open(data, 'AVISO', {
+        duration: 2000,
+      });
+    });
+
+    this.especialidadService.listar().subscribe(data => {
+      this.dataSource = new MatTableDataSource(data);
+      this.dataSource.sort = this.sort;
+      this.dataSource.paginator = this.paginator;
+    });
   }
 
+  filtrar(valor: string) {
+    this.dataSource.filter = valor.trim().toLowerCase();
+  }
+
+  eliminar(especialidad: Especialidad) {
+      this.especialidadService.eliminar(especialidad.idEspecialidad).pipe(switchMap(() => {
+        return this.especialidadService.listar();
+      })).subscribe(data => {
+        this.especialidadService.EspecialidadCambio.next(data);
+        this.especialidadService.mensajeCambio.next('Se eliminó');
+      });
+  }
 }
